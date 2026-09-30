@@ -1,18 +1,27 @@
+import sys
+import os
+
+sys.path.append(
+    os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__))
+    )
+)
+
 import pandas as pd
-from pymongo import MongoClient
+from src.connectionDB import collection
 
 def redData():
     movies = pd.read_json("data/data.json")
-    print(movies.dtypes)
+    # print(movies.dtypes)
 
     movies = movies.drop_duplicates(subset=["movie_id"])
 
-    print(movies["movie_id"].duplicated().sum())
+    # print(movies["movie_id"].duplicated().sum())
 
     # incohérences
-    print(movies[movies["vote_average"] < 0])
-    print(movies[movies["vote_average"] > 10])
-    print(movies[movies["budget"] < 0])
+    # print(movies[movies["vote_average"] < 0])
+    # print(movies[movies["vote_average"] > 10])
+    # print(movies[movies["budget"] < 0])
 
     movies = movies[movies["release_date"] <= "2026-09-29"]
 
@@ -20,13 +29,17 @@ def redData():
         movies["release_date"],
         errors="coerce"
     )
-    print((movies["release_date"] > "2026-09-29").sum())
+    # print((movies["release_date"] > "2026-09-29").sum())
 
-    print(movies.isnull().sum())
+    # print(movies.isnull().sum())
 
     movies = movies.dropna(subset=["release_date"])
     
-    print(movies.isnull().sum())
+    # print(movies.isnull().sum())
+    movies = movies[
+        movies["runtime"].notna() &
+        (movies["runtime"] > 0)
+    ]
 
     numeric_cols = [
         "movie_id",
@@ -57,11 +70,6 @@ def redData():
 
 def stockData():
     movies = redData()
-
-    client = MongoClient("mongodb://localhost:27017/")
-
-    db = client["movie_intelligence"]
-    collection = db["movies"]
     movies_dict = movies.to_dict(orient="records")
 
     collection.create_index(
@@ -74,5 +82,6 @@ def stockData():
             {"$set": movie},
             upsert=True
         )
+    print("movies is saved ")
 
 stockData()
